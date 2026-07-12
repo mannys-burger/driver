@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manny's Burger Order System</title>
+    <style>
+        :root {
+            --primary: #f0a500;
+            --dark: #222;
+            --light: #fff;
+            --bg: #f2f4f7;
+            --border: #dcdcdc;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px; 
+            color: var(--dark);
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        h1, h2, h3 { text-align: center; }
+        
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background-color: var(--primary);
+            color: var(--dark);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-secondary { background-color: var(--dark); color: var(--light); }
+        .btn-danger { background-color: #dc3545; color: white; }
+
+        /* Screens */
+        #menu-screen, #cart-screen { display: none; }
+
+        /* Menu Layout (Sidebar + Content) */
+        .menu-layout {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 90px;
+            flex-shrink: 0;
+            background: var(--light);
+            border-radius: 8px;
+            padding: 5px;
+            height: fit-content;
+            position: sticky;
+            top: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .cat-tab {
+            padding: 12px 5px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .cat-tab:last-child { border-bottom: none; }
+        .cat-tab.active {
+            background-color: var(--primary);
+            color: var(--dark);
+            border-radius: 5px;
+        }
+
+        /* Items Grid */
+        .menu-content {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 10px;
+            align-content: start;
+        }
+
+        /* Grid Item Button (Matches Your Image) */
+        .item-btn {
+            background-color: #fdfdfd;
+            border: 2px solid #eab543;
+            border-radius: 6px;
+            padding: 15px 5px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+            transition: 0.1s;
+            color: var(--dark);
+        }
+        .item-btn:active { transform: scale(0.95); box-shadow: inset 1px 1px 4px rgba(0,0,0,0.1); }
+
+        /* Modal (Popup) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-content select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            font-size: 16px;
+            font-family: inherit;
+        }
+        
+        /* Cart & Form */
+        .cart-item {
+            background: var(--light);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+        .total-price { 
+            font-size: 20px; font-weight: bold; text-align: center; 
+            padding: 15px; background: var(--primary); border-radius: 8px; margin: 15px 0;
+        }
+        .form-group { margin-bottom: 12px; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid var(--border);
+            border-radius: 5px; box-sizing: border-box; font-family: inherit;
+        }
+        
+        #view-cart-btn {
+            position: fixed; bottom: 0; left: 0; width: 100%; margin: 0; border-radius: 0; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Screen 1: Branch Selection -->
+    <div id="branch-screen">
+        <h1>Manny's Burger 🍔</h1>
+        <h2>بتطلب منين؟</h2>
+        <button class="btn" onclick="selectBranch('Faisal')">فرع فيصل</button>
+        <button class="btn" onclick="selectBranch('Sharm')">فرع شرم الشيخ</button>
+    </div>
+
+    <!-- Screen 2: Menu Grid & Sidebar -->
+    <div id="menu-screen">
+        <h3 style="margin-top: 0;">فرع <span id="branch-name-display"></span></h3>
+        
+        <div class="menu-layout">
+            <!-- Sidebar Categories -->
+            <div class="sidebar" id="sidebar-categories">
+                <!-- Tabs generated via JS -->
+            </div>
+            
+            <!-- Items Grid -->
+            <div class="menu-content" id="menu-grid">
+                <!-- Items generated via JS -->
+            </div>
+        </div>
+
+        <button id="view-cart-btn" class="btn btn-secondary" onclick="showCart()">🛒 السلة (<span id="cart-count">0</span>) - إتمام الطلب</button>
+    </div>
+
+    <!-- Screen 3: Cart & Checkout -->
+    <div id="cart-screen">
+        <h2>سلة المشتريات</h2>
+        <div id="cart-items-container"></div>
+        <div class="total-price">الإجمالي: <span id="total-price-display">0</span> LE</div>
+        
+        <h3>ملاحظات الطلب</h3>
+        <div class="form-group">
+            <textarea id="global-note" rows="3" placeholder="اكتب هنا أي ملاحظات إضافية (مثال: الكلاسيك بدون بصل، البطاطس عليها صوص جبنة)"></textarea>
+        </div>
+
+        <h3>بيانات التوصيل</h3>
+        <div class="form-group"><input type="text" id="cust-name" placeholder="الاسم" required></div>
+        <div class="form-group"><input type="tel" id="cust-phone" placeholder="رقم الموبايل" required></div>
+        <div class="form-group"><input type="text" id="cust-street" placeholder="الشارع" required></div>
+        <div class="form-group"><input type="text" id="cust-building" placeholder="رقم العمارة"></div>
+        <div class="form-group"><input type="text" id="cust-floor" placeholder="الدور"></div>
+        <div class="form-group"><input type="text" id="cust-apt" placeholder="رقم الشقة"></div>
+        <div class="form-group"><input type="text" id="cust-landmark" placeholder="علامة مميزة (اختياري)"></div>
+        
+        <button class="btn" onclick="sendWhatsApp()">📲 إرسال الطلب عبر واتساب</button>
+        <button class="btn btn-danger" onclick="backToMenu()">⬅️ رجوع للمنيو</button>
+    </div>
+</div>
+
+<!-- Modal / Popup for choosing size -->
+<div class="modal-overlay" id="item-modal">
+    <div class="modal-content">
+        <h3 id="modal-item-name">اسم الصنف</h3>
+        
+        <label style="font-weight: bold; font-size:14px; text-align:right; display:block;">اختار الحجم/السعر:</label>
+        <select id="modal-size-select"></select>
+        
+        <div id="modal-cook-group" style="display: none;">
+            <label style="font-weight: bold; font-size:14px; text-align:right; display:block; margin-top:10px;">طريقة الطهي:</label>
+            <select id="modal-cook-select">
+                <option value="مقلي">مقلي</option>
+                <option value="مشوي">مشوي</option>
+            </select>
+        </div>
+
+        <button class="btn" onclick="addToCart()">➕ أضف للسلة</button>
+        <button class="btn btn-danger" style="margin-top:5px;" onclick="closeModal()">إلغاء</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // قاعدة البيانات الشاملة
+    // ==========================================
+    const menuData = [
+        { category: "Beef", name: "Classic Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 120, "250g": 170, "300g": 190, "400g": 240 }, Sharm: { "150g": 140, "250g": 200, "300g": 220, "400g": 270 } } },
+        { category: "Beef", name: "Caramelized Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 140, "250g": 190, "300g": 210, "400g": 260 }, Sharm: { "150g": 160, "250g": 220, "300g": 240, "400g": 290 } } },
+        { category: "Beef", name: "White Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 155, "250g": 205, "300g": 225, "400g": 275 }, Sharm: { "150g": 170, "250g": 230, "300g": 250, "400g": 300 } } },
+        { category: "Beef", name: "New York Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 160, "250g": 210, "300g": 230, "400g": 280 }, Sharm: { "150g": 180, "250g": 240, "300g": 260, "400g": 310 } } },
+        { category: "Beef", name: "Fire Bite Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 165, "250g": 215, "300g": 235, "400g": 285 }, Sharm: { "150g": 185, "250g": 245, "300g": 265, "400g": 315 } } },
+        { category: "Beef", name: "Boskino Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 170, "250g": 220, "300g": 240, "400g": 290 }, Sharm: { "150g": 190, "250g": 250, "300g": 270, "400g": 320 } } },
+        { category: "Beef", name: "Texas Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 160, "250g": 210, "300g": 230, "400g": 280 }, Sharm: { "150g": 180, "250g": 240, "300g": 260, "400g": 310 } } },
+        { category: "Beef", name: "Mushroom Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 150, "250g": 200, "300g": 220, "400g": 270 }, Sharm: { "150g": 170, "250g": 230, "300g": 250, "400g": 300 } } },
+        { category: "Beef", name: "Smoked Burger", sizes: ["150g", "250g", "300g", "400g"], prices: { Faisal: { "150g": 160, "250g": 210, "300g": 230, "400g": 280 }, Sharm: { "150g": 180, "250g": 240, "300g": 260, "400g": 310 } } },
+        { category: "Beef", name: "Smash Burger", sizes: ["Double", "Triple"], prices: { Faisal: { "Double": 200, "Triple": 250 }, Sharm: { "Double": 240, "Triple": 290 } } },
+
+        { category: "Chicken", name: "Classic Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 110, "Double": 160, "Triple": 210 }, Sharm: { "Single": 120, "Double": 170, "Triple": 220 } } },
+        { category: "Chicken", name: "Supreme Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 125, "Double": 175, "Triple": 225 }, Sharm: { "Single": 140, "Double": 190, "Triple": 240 } } },
+        { category: "Chicken", name: "Ranch Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 150, "Double": 200, "Triple": 250 }, Sharm: { "Single": 160, "Double": 210, "Triple": 260 } } },
+        { category: "Chicken", name: "RBJ Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 140, "Double": 190, "Triple": 240 }, Sharm: { "Single": 140, "Double": 190, "Triple": 240 } } },
+        { category: "Chicken", name: "Chili Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 130, "Double": 180, "Triple": 230 }, Sharm: { "Single": 140, "Double": 190, "Triple": 240 } } },
+        { category: "Chicken", name: "NASA Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 130, "Double": 180, "Triple": 230 }, Sharm: { "Single": 140, "Double": 190, "Triple": 240 } } },
+        { category: "Chicken", name: "Magnum Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 150, "Double": 200, "Triple": 250 }, Sharm: { "Single": 160, "Double": 210, "Triple": 260 } } },
+        { category: "Chicken", name: "Chicken Yellow", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 130, "Double": 180, "Triple": 230 }, Sharm: { "Single": 140, "Double": 190, "Triple": 240 } } },
+        { category: "Chicken", name: "Mano Chicken", sizes: ["Single", "Double", "Triple"], prices: { Faisal: { "Single": 100, "Double": 150, "Triple": 200 }, Sharm: { "Single": 120, "Double": 180, "Triple": 240 } } },
+
+        { category: "Sandwich", name: "Smoked Hotdog", sizes: ["One Size"], prices: { Faisal: { "One Size": 110 }, Sharm: { "One Size": 120 } } },
+        { category: "Sandwich", name: "Classic Hotdog", sizes: ["One Size"], prices: { Faisal: { "One Size": 90 }, Sharm: { "One Size": 100 } } },
+        { category: "Sandwich", name: "Chicken Wrap", sizes: ["One Size"], needsCookingType: true, prices: { Faisal: { "One Size": 90 }, Sharm: { "One Size": 100 } } },
+        { category: "Sandwich", name: "Loaded Fries Wrap", sizes: ["One Size"], prices: { Faisal: { "One Size": 80 }, Sharm: { "One Size": 90 } } },
+
+        { category: "Fries", name: "Fries", sizes: ["One Size"], prices: { Faisal: { "One Size": 50 }, Sharm: { "One Size": 60 } } },
+        { category: "Fries", name: "Crispy Fries", sizes: ["One Size"], prices: { Faisal: { "One Size": 60 }, Sharm: { "One Size": 70 } } },
+        { category: "Fries", name: "Chili Cheese Fries", sizes: ["Small", "Large"], prices: { Faisal: { "Small": 90, "Large": 160 }, Sharm: { "Small": 100, "Large": 180 } } },
+        { category: "Fries", name: "Beef Bacon Fries", sizes: ["Small", "Large"], prices: { Faisal: { "Small": 90, "Large": 160 }, Sharm: { "Small": 100, "Large": 180 } } },
+        { category: "Fries", name: "Smoky Doggy", sizes: ["Small", "Large"], prices: { Faisal: { "Small": 70, "Large": 120 }, Sharm: { "Small": 100, "Large": 180 } } },
+        { category: "Fries", name: "Cheese Fries", sizes: ["Small", "Large"], prices: { Faisal: { "Small": 90, "Large": 160 }, Sharm: { "Small": 100, "Large": 180 } } },
+        { category: "Fries", name: "Chicky Fries", sizes: ["Small", "Large"], needsCookingType: true, prices: { Faisal: { "Small": 90, "Large": 160 }, Sharm: { "Small": 100, "Large": 180 } } },
+
+        { category: "Sides", name: "Mozzarella sticks", sizes: ["One Size"], prices: { Faisal: { "One Size": 60 }, Sharm: { "One Size": 75 } } },
+        { category: "Sides", name: "Cheddar jalapeno", sizes: ["One Size"], prices: { Faisal: { "One Size": 60 }, Sharm: { "One Size": 75 } } },
+        { category: "Sides", name: "Onion rings", sizes: ["One Size"], prices: { Faisal: { "One Size": 50 }, Sharm: { "One Size": 60 } } },
+        { category: "Sides", name: "Coleslaw", sizes: ["One Size"], prices: { Faisal: { "One Size": 40 }, Sharm: { "One Size": 50 } } },
+        
+        { category: "Sauces", name: "Cheddar cheese sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 25 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Fire sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Ranch sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "BBQ sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Thai chili sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "New York sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Texas sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Buffalo sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Honey mustard sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Sauces", name: "Dynamite sauce", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+
+        { category: "Extra", name: "Extra bun", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 25 } } },
+        { category: "Extra", name: "Extra patty 150gm", sizes: ["One Size"], prices: { Faisal: { "One Size": 80 }, Sharm: { "One Size": 100 } } },
+        { category: "Extra", name: "Extra patty 250gm", sizes: ["One Size"], prices: { Faisal: { "One Size": 120 }, Sharm: { "One Size": 145 } } },
+        { category: "Extra", name: "Extra Chicken piece", sizes: ["One Size"], prices: { Faisal: { "One Size": 40 }, Sharm: { "One Size": 40 } } },
+        { category: "Extra", name: "Smoked turkey", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 25 } } },
+        { category: "Extra", name: "Smoked beef", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 30 } } },
+        { category: "Extra", name: "Beef Bacon", sizes: ["One Size"], prices: { Faisal: { "One Size": 30 }, Sharm: { "One Size": 50 } } },
+        { category: "Extra", name: "Carmalised", sizes: ["One Size"], prices: { Faisal: { "One Size": 30 }, Sharm: { "One Size": 40 } } },
+        { category: "Extra", name: "Mushroom", sizes: ["One Size"], prices: { Faisal: { "One Size": 40 }, Sharm: { "One Size": 50 } } },
+        { category: "Extra", name: "Add sauce on sandwich", sizes: ["One Size"], prices: { Faisal: { "One Size": 10 }, Sharm: { "One Size": 15 } } },
+        { category: "Extra", name: "Cheese extra", sizes: ["One Size"], prices: { Faisal: { "One Size": 20 }, Sharm: { "One Size": 35 } } },
+        { category: "Extra", name: "Cheese slice", sizes: ["One Size"], prices: { Faisal: { "One Size": 15 }, Sharm: { "One Size": 20 } } },
+        { category: "Extra", name: "Spicy (jalapeno + fire)", sizes: ["One Size"], prices: { Faisal: { "One Size": 15 }, Sharm: { "One Size": 20 } } },
+
+        { category: "Drinks", name: "Soft Drink", sizes: ["One Size"], prices: { Faisal: { "One Size": 30 }, Sharm: { "One Size": 40 } } }
+    ];
+
+    let currentBranch = "";
+    let cart = [];
+    let activeCategory = "Beef";
+    let selectedItemIndex = null;
+    
+    // رقم الواتساب المحدث
+    const WHATSAPP_NUMBER = "201070500094"; 
+
+    // ==========================================
+    // منطق التنقل
+    // ==========================================
+    function selectBranch(branch) {
+        currentBranch = branch;
+        document.getElementById("branch-screen").style.display = "none";
+        document.getElementById("menu-screen").style.display = "block";
+        document.getElementById("branch-name-display").innerText = branch === 'Faisal' ? 'فيصل' : 'شرم الشيخ';
+        
+        renderSidebar();
+        renderMenuGrid();
+    }
+
+    // ==========================================
+    // القائمة الجانبية (الأقسام)
+    // ==========================================
+    function renderSidebar() {
+        const sidebar = document.getElementById("sidebar-categories");
+        sidebar.innerHTML = "";
+        
+        const categories = [...new Set(menuData.map(item => item.category))];
+        
+        categories.forEach(cat => {
+            let isActive = cat === activeCategory ? "active" : "";
+            sidebar.innerHTML += `<div class="cat-tab ${isActive}" onclick="filterCategory('${cat}')">${cat}</div>`;
+        });
+    }
+
+    function filterCategory(cat) {
+        activeCategory = cat;
+        renderSidebar();
+        renderMenuGrid();
+    }
+
+    // ==========================================
+    // عرض الأصناف كـ أزرار (Grid)
+    // ==========================================
+    function renderMenuGrid() {
+        const grid = document.getElementById("menu-grid");
+        grid.innerHTML = "";
+
+        menuData.forEach((item, index) => {
+            if (item.category === activeCategory) {
+                grid.innerHTML += `<div class="item-btn" onclick="openModal(${index})">${item.name}</div>`;
+            }
+        });
+    }
+
+    // ==========================================
+    // المودال (النافذة المنبثقة للاختيار)
+    // ==========================================
+    function openModal(index) {
+        selectedItemIndex = index;
+        const item = menuData[index];
+        
+        document.getElementById("modal-item-name").innerText = item.name;
+        
+        const sizeSelect = document.getElementById("modal-size-select");
+        sizeSelect.innerHTML = "";
+        
+        item.sizes.forEach(size => {
+            let price = item.prices[currentBranch][size];
+            let sizeLabel = size === "One Size" ? "إضافة" : size;
+            sizeSelect.innerHTML += `<option value="${size}|${price}">${sizeLabel} - ${price} LE</option>`;
+        });
+
+        if (item.needsCookingType) {
+            document.getElementById("modal-cook-group").style.display = "block";
+        } else {
+            document.getElementById("modal-cook-group").style.display = "none";
+        }
+
+        document.getElementById("item-modal").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("item-modal").style.display = "none";
+        selectedItemIndex = null;
+    }
+
+    // ==========================================
+    // وظائف السلة
+    // ==========================================
+    function addToCart() {
+        if(selectedItemIndex === null) return;
+        
+        const item = menuData[selectedItemIndex];
+        const sizeSelect = document.getElementById("modal-size-select").value;
+        const [size, price] = sizeSelect.split('|');
+        
+        let cookType = "";
+        if (item.needsCookingType) {
+            cookType = document.getElementById("modal-cook-select").value;
+        }
+
+        cart.push({
+            name: item.name,
+            size: size === "One Size" ? "" : size,
+            price: parseInt(price),
+            cookType: cookType
+        });
+
+        updateCartCount();
+        closeModal();
+    }
+
+    function updateCartCount() {
+        document.getElementById("cart-count").innerText = cart.length;
+    }
+
+    function showCart() {
+        if(cart.length === 0) {
+            alert("السلة فاضية! اختار ساندوتشاتك الأول.");
+            return;
+        }
+        document.getElementById("menu-screen").style.display = "none";
+        document.getElementById("cart-screen").style.display = "block";
+        renderCart();
+    }
+
+    function backToMenu() {
+        document.getElementById("cart-screen").style.display = "none";
+        document.getElementById("menu-screen").style.display = "block";
+    }
+
+    function renderCart() {
+        const container = document.getElementById("cart-items-container");
+        container.innerHTML = "";
+        let total = 0;
+
+        cart.forEach((item, i) => {
+            total += item.price;
+            let cookStr = item.cookType ? `(${item.cookType})` : "";
+            let sizeStr = item.size ? `[${item.size}]` : "";
+            
+            container.innerHTML += `
+                <div class="cart-item">
+                    <strong style="font-size:16px;">${item.name} ${cookStr} ${sizeStr}</strong> <br>
+                    <span style="font-size:16px; color:#d35400; font-weight:bold;">${item.price} LE</span>
+                    <button onclick="removeFromCart(${i})" style="float:left; color:red; border:1px solid red; background:#fff; padding:5px 10px; border-radius:5px; cursor:pointer;">❌ حذف</button>
+                    <div style="clear:both;"></div>
+                </div>`;
+        });
+        
+        document.getElementById("total-price-display").innerText = total;
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartCount();
+        if(cart.length === 0) {
+            backToMenu();
+        } else {
+            renderCart();
+        }
+    }
+
+    // ==========================================
+    // إرسال الطلب لواتساب المطعم
+    // ==========================================
+    function sendWhatsApp() {
+        const name = document.getElementById("cust-name").value;
+        const phone = document.getElementById("cust-phone").value;
+        const street = document.getElementById("cust-street").value;
+        
+        if(!name || !phone || !street) {
+            alert("⚠️ برجاء ملء البيانات الأساسية (الاسم، الموبايل، الشارع)!");
+            return;
+        }
+
+        const building = document.getElementById("cust-building").value;
+        const floor = document.getElementById("cust-floor").value;
+        const apt = document.getElementById("cust-apt").value;
+        const landmark = document.getElementById("cust-landmark").value;
+        const globalNote = document.getElementById("global-note").value;
+
+        let total = 0;
+        let message = `*طلب جديد من فرع: ${currentBranch === 'Faisal' ? 'فيصل' : 'شرم الشيخ'}* 🍔\n`;
+        message += `-------------------\n`;
+        message += `*الاسم:* ${name}\n`;
+        message += `*التليفون:* ${phone}\n`;
+        message += `*العنوان:* ${street}، عمارة ${building || '-'}، دور ${floor || '-'}، شقة ${apt || '-'}\n`;
+        if(landmark) message += `*علامة مميزة:* ${landmark}\n`;
+        message += `-------------------\n`;
+        message += `*الطلب:*\n\n`;
+
+        cart.forEach(item => {
+            total += item.price;
+            let cookStr = item.cookType ? `(${item.cookType})` : "";
+            let sizeStr = item.size ? `[${item.size}]` : "";
+            message += `▪️ 1x ${item.name} ${cookStr} ${sizeStr} - ${item.price}LE\n`;
+        });
+
+        message += `-------------------\n`;
+        if(globalNote) {
+            message += `📝 *ملاحظات العميل:*\n${globalNote}\n`;
+            message += `-------------------\n`;
+        }
+        message += `💰 *الإجمالي: ${total} LE*\n`;
+
+        const encodedMsg = encodeURIComponent(message);
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMsg}`, '_blank');
+    }
+</script>
+
+</body>
+</html>
