@@ -7,9 +7,9 @@
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background: #f2f4f7; margin: 0; padding: 15px; color: #222; padding-bottom: 50px;}
         .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .header h1 { margin: 0; font-size: 22px; }
-        .refresh-btn { background: #f0a500; color: #222; border: none; padding: 12px 20px; font-weight: bold; font-size: 16px; border-radius: 8px; margin-top: 10px; cursor: pointer; width: 100%; box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
-        .refresh-btn:active { transform: scale(0.98); }
+        .header h1 { margin: 0; font-size: 20px; }
+        .filters { margin-bottom: 15px; }
+        .refresh-btn { background: #f0a500; color: #222; border: none; padding: 12px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; margin-top: 5px; }
         
         .order-card { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-right: 5px solid #f0a500; }
         .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
@@ -17,54 +17,56 @@
         .status-badge { background: #e8f5e9; color: #155724; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px; border: 1px solid #c3e6cb;}
         
         .info-row { margin-bottom: 8px; font-size: 15px; line-height: 1.5; }
-        .info-row strong { color: #555; }
-        
         .total-price { font-size: 18px; font-weight: bold; color: #d35400; text-align: center; background: #fff9e6; padding: 12px; border-radius: 8px; margin: 15px 0; border: 1px dashed #f0a500; }
         
         .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; text-align: center; cursor: pointer; text-decoration: none; color: white; display: flex; justify-content: center; align-items: center; gap: 5px; min-width: 120px;}
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; text-align: center; cursor: pointer; text-decoration: none; color: white; display: flex; justify-content: center; align-items: center; gap: 5px; }
         .btn-call { background: #007bff; }
         .btn-map { background: #17a2b8; }
-        .btn-done { background: #28a745; flex-basis: 100%; font-size: 18px; padding: 15px; margin-top: 5px;}
-        .btn:active { transform: scale(0.98); }
-        
-        #loading { text-align: center; font-weight: bold; color: #555; margin-top: 30px; font-size: 18px; }
+        .btn-road { background: #f0a500; color: #222; flex-basis: 100%; }
+        .btn-done { background: #28a745; flex-basis: 100%; font-size: 16px; padding: 15px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>🛵 بوابة الطيارين - Manny's</h1>
+        <h1>🛵 بوابة الطيارين</h1>
+        <div class="filters">
+            <select id="branch-select" onchange="fetchDeliveryOrders()" style="width: 100%; padding: 10px; border-radius: 8px; border: none; font-size: 16px; font-weight:bold;">
+                <option value="فيصل">فرع فيصل</option>
+                <option value="شرم (خليج نعمة)">شرم (خليج نعمة)</option>
+                <option value="شرم (خليج نبق)">شرم (خليج نبق)</option>
+            </select>
+        </div>
         <button class="refresh-btn" onclick="fetchDeliveryOrders()">🔄 تحديث الأوردرات</button>
     </div>
 
-    <div id="loading">جاري تحميل الأوردرات... ⏳</div>
+    <div id="loading" style="text-align:center; font-weight:bold;">جاري تحميل الأوردرات... ⏳</div>
     <div id="orders-container"></div>
 
     <script>
         // ⚠️⚠️ حط اللينك الجديد بتاع جوجل سكريبت هنا ⚠️⚠️
-        const API_URL = "https://script.google.com/macros/s/AKfycbwfN345nZBi5D0TbZ0nHwemBxmL5izHoss5McZy7557hh_CBEC_wvxUhnG0ogBKlNrPIw/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbwbPwWjEMhlzr_lY2grRw7_WtTWoTLbBrVlJnjIOTyXV3GPolV0LtTXX7jWH42k_IqVag/exec";
         
         async function fetchDeliveryOrders() {
+            let branch = document.getElementById("branch-select").value;
             document.getElementById("loading").style.display = "block";
             document.getElementById("orders-container").innerHTML = "";
             
             try {
-                let response = await fetch(API_URL + "?action=getDeliveryOrders");
+                let response = await fetch(API_URL + "?action=getDeliveryOrders&branch=" + encodeURIComponent(branch));
                 let orders = await response.json();
                 
                 document.getElementById("loading").style.display = "none";
                 
                 if(orders.length === 0) {
-                    document.getElementById("orders-container").innerHTML = "<h3 style='text-align:center; color:#555; margin-top:40px;'>روّق يا بطل، مفيش أوردرات دلوقتي ☕</h3>";
+                    document.getElementById("orders-container").innerHTML = "<h3 style='text-align:center; color:#555; margin-top:40px;'>مفيش أوردرات في الفرع ده دلوقتي ☕</h3>";
                     return;
                 }
                 
                 let html = "";
                 orders.forEach(order => {
-                    // تحويل العنوان للينك بحث على جوجل مابس
                     let mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.Address)}`;
-                    // لينك الاتصال المباشر
                     let callLink = `tel:${order.Phone}`;
                     
                     html += `
@@ -73,49 +75,33 @@
                             <span class="order-id">${order.OrderID || 'بدون كود'}</span>
                             <span class="status-badge">${order.Status}</span>
                         </div>
-                        
                         <div class="info-row"><strong>العميل:</strong> ${order.Name}</div>
                         <div class="info-row"><strong>العنوان:</strong> ${order.Address}</div>
-                        <div class="info-row"><strong>الفرع:</strong> ${order.Branch}</div>
-                        ${order.Notes ? `<div class="info-row" style="color:#dc3545;"><strong>📝 ملاحظة للطيار:</strong> ${order.Notes}</div>` : ''}
-                        
-                        <div class="total-price">المطلوب تحصيله: ${order.Total} LE</div>
-                        
+                        ${order.Notes ? `<div class="info-row" style="color:#dc3545;"><strong>📝 ملاحظة:</strong> ${order.Notes}</div>` : ''}
+                        <div class="total-price">المطلوب: ${order.Total} LE</div>
                         <div class="action-buttons">
                             <a href="${callLink}" class="btn btn-call">📞 اتصال</a>
                             <a href="${mapLink}" target="_blank" class="btn btn-map">📍 الخريطة</a>
-                            <button class="btn btn-done" onclick="markAsDelivered(${order.row}, this)">✅ تم التوصيل والاستلام</button>
+                            <button class="btn btn-road" onclick="updateStatus(${order.row}, 'في الطريق 🛵')">🛵 طالع في الطريق</button>
+                            <button class="btn btn-done" onclick="updateStatus(${order.row}, 'تم التوصيل ✅')">✅ تم التوصيل</button>
                         </div>
                     </div>`;
                 });
-                
                 document.getElementById("orders-container").innerHTML = html;
-                
             } catch(e) {
-                document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال، تأكد من الإنترنت! ❌</span>";
+                document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال! ❌</span>";
             }
         }
 
-        async function markAsDelivered(row, btn) {
-            if(!confirm("متأكد إنك سلمت الأوردر وحصلت الفلوس بالكامل؟")) return;
-            
-            btn.innerText = "جاري التأكيد... ⏳";
-            btn.style.opacity = "0.7";
-            btn.disabled = true;
-            
+        async function updateStatus(row, newStatus) {
+            if(!confirm("تأكيد تغيير الحالة لـ " + newStatus + "؟")) return;
             try {
-                await fetch(API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent("تم التوصيل ✅"));
+                await fetch(API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent(newStatus));
                 fetchDeliveryOrders(); 
-            } catch(e) {
-                alert("حصلت مشكلة في التحديث، حاول تاني!");
-                btn.innerText = "✅ تم التوصيل والاستلام";
-                btn.style.opacity = "1";
-                btn.disabled = false;
-            }
+            } catch(e) { alert("فشل التحديث!"); }
         }
 
         window.onload = fetchDeliveryOrders;
-        // التحديث التلقائي كل دقيقة
         setInterval(fetchDeliveryOrders, 60000);
     </script>
 </body>
