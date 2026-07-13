@@ -2,6 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <!-- إجبار المتصفح على عدم حفظ الكاش -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -48,6 +52,15 @@
 </head>
 <body>
 
+    <!-- كود إجباري لمسح أي ذاكرة قديمة -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) { registration.unregister(); }
+            });
+        }
+    </script>
+
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
         <p>اكتب اسمك عشان تستلم الأوردرات</p>
@@ -84,12 +97,11 @@
         // *** حط اللينك بتاعك هنا ***
         const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
         
-        let currentDriver = "";
+        let currentDriver = localStorage.getItem('mannys_driver_name');
         let fetchedOrders = [];
         let currentTab = 'available';
 
         window.onload = () => {
-            currentDriver = localStorage.getItem('mannys_driver_name');
             if (currentDriver) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'block';
@@ -118,7 +130,7 @@
             document.getElementById("loading").style.display = "block";
             
             try {
-                // ضفنا t=${Date.now()} لمنع الأيفون من تخزين نسخة قديمة
+                // ضفنا t=${Date.now()} عشان الأيفون ميفتحش كاش قديم
                 let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`);
                 fetchedOrders = await response.json();
                 document.getElementById("loading").style.display = "none";
@@ -149,13 +161,9 @@
                 let rawPhone = String(order.Phone || "").replace(/\s+/g, '');
                 let formattedPhone = rawPhone;
 
-                // لو بيبدأ بـ + نشيلها
                 if (rawPhone.startsWith('+')) { formattedPhone = rawPhone.substring(1); } 
-                // لو بيبدأ بـ 00 نشيلهم
                 else if (rawPhone.startsWith('00')) { formattedPhone = rawPhone.substring(2); } 
-                // لو مصري بيبدأ بـ 0 (زي 010) نشيل الصفر ونحط 20
                 else if (rawPhone.startsWith('0') && rawPhone.length === 11) { formattedPhone = '20' + rawPhone.substring(1); }
-                // لو مصري بس من غير صفر (زي 10) نحط 20
                 else if (rawPhone.length === 10 && rawPhone.startsWith('1')) { formattedPhone = '20' + rawPhone; }
 
                 let callLink = `tel:${formattedPhone}`;
