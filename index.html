@@ -2,7 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <!-- إجبار المتصفح على عدم حفظ الكاش -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -52,7 +51,7 @@
 </head>
 <body>
 
-    <!-- كود إجباري لمسح أي ذاكرة قديمة -->
+    <!-- كود إجباري لمسح أي كاش قديم -->
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -61,6 +60,7 @@
         }
     </script>
 
+    <!-- شاشة تسجيل الدخول -->
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
         <p>اكتب اسمك عشان تستلم الأوردرات</p>
@@ -68,6 +68,7 @@
         <button onclick="saveDriverName()">دخول للسيستم</button>
     </div>
 
+    <!-- واجهة الطيار -->
     <div id="main-app" style="display: none;">
         <div id="pwa-prompt">📲 اضغط هنا لتثبيت الأبلكيشن على موبايلك</div>
 
@@ -130,7 +131,7 @@
             document.getElementById("loading").style.display = "block";
             
             try {
-                // ضفنا t=${Date.now()} عشان الأيفون ميفتحش كاش قديم
+                // تفتيش جديد في كل مرة يمنع كاش الأيفون باستخدام Date.now()
                 let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`);
                 fetchedOrders = await response.json();
                 document.getElementById("loading").style.display = "none";
@@ -157,7 +158,7 @@
             
             let html = "";
             displayList.forEach(order => {
-                // --- معالجة الأرقام الذكية (مصري/دولي) ---
+                // --- معالجة الأرقام الذكية ---
                 let rawPhone = String(order.Phone || "").replace(/\s+/g, '');
                 let formattedPhone = rawPhone;
 
@@ -204,6 +205,7 @@
         async function updateStatus(row, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             try {
+                // تحديث الحالة
                 await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`);
                 fetchDeliveryOrders(); 
             } catch(e) { alert("فشل التحديث!"); }
