@@ -13,24 +13,20 @@
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background: #f2f4f7; margin: 0; padding: 15px; padding-bottom: 50px;}
         
-        /* Login Screen */
         #login-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white;}
         #login-screen input { padding: 15px; font-size: 18px; border-radius: 8px; border: none; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px;}
         #login-screen button { background: #f0a500; color: #222; font-weight: bold; font-size: 18px; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;}
         
-        /* App UI */
         .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 15px;}
         .header h1 { margin: 0; font-size: 20px; }
         .driver-info { color: white; font-size: 14px; margin-top: 5px; }
         .filters select { width: 100%; padding: 10px; border-radius: 8px; font-size: 16px; font-weight:bold; border: none;}
         .refresh-btn { background: #f0a500; color: #222; border: none; padding: 12px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; margin-top: 10px; font-size: 16px;}
         
-        /* Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px 5px; font-size: 15px; font-weight: bold; background: #ddd; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; color: #333;}
         .tab-btn.active { background: #f0a500; color: #222; }
 
-        /* Order Cards */
         .order-card { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-right: 5px solid #f0a500; }
         .order-id { background: #222; color: #f0a500; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 14px; }
         .status-badge { background: #e8f5e9; color: #155724; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px; border: 1px solid #c3e6cb;}
@@ -45,14 +41,13 @@
         .btn-road { background: #f0a500; color: #222; flex-basis: 100%; font-size: 16px; padding: 15px;}
         .btn-done { background: #28a745; flex-basis: 100%; font-size: 16px; padding: 15px;}
         
-        /* PWA Install Prompt */
         #pwa-prompt { display: none; background: #28a745; color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
 <body>
 
-    <!-- كود إجباري لمسح أي كاش قديم -->
     <script>
+        // إزالة أي Service Worker قديم
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for (let registration of registrations) { registration.unregister(); }
@@ -60,7 +55,6 @@
         }
     </script>
 
-    <!-- شاشة تسجيل الدخول -->
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
         <p>اكتب اسمك عشان تستلم الأوردرات</p>
@@ -68,7 +62,6 @@
         <button onclick="saveDriverName()">دخول للسيستم</button>
     </div>
 
-    <!-- واجهة الطيار -->
     <div id="main-app" style="display: none;">
         <div id="pwa-prompt">📲 اضغط هنا لتثبيت الأبلكيشن على موبايلك</div>
 
@@ -76,13 +69,13 @@
             <h1>🛵 بوابة الطيارين</h1>
             <div class="driver-info">الطيار: <strong id="display-name"></strong></div>
             <div class="filters" style="margin-top: 10px;">
-                <select id="branch-select" onchange="fetchDeliveryOrders()">
+                <select id="branch-select" onchange="forceRefresh()">
                     <option value="فيصل">فرع فيصل</option>
                     <option value="شرم (خليج نعمة)">شرم (خليج نعمة)</option>
                     <option value="شرم (خليج نبق)">شرم (خليج نبق)</option>
                 </select>
             </div>
-            <button class="refresh-btn" onclick="fetchDeliveryOrders()">🔄 تحديث الأوردرات</button>
+            <button class="refresh-btn" onclick="forceRefresh()">🔄 تحديث الأوردرات</button>
         </div>
 
         <div class="tabs">
@@ -96,11 +89,12 @@
 
     <script>
         // *** حط اللينك بتاعك هنا ***
-        const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
+        const API_URL = "https://script.google.com/macros/s/AKfycbwk_KRq58ZNXaUFeXiGPeOzTiQho1it7QbsRsRhFqpcmpRHj8Hatp75ZrFF-fZdeL5Rgw/exec"; 
         
         let currentDriver = localStorage.getItem('mannys_driver_name');
         let fetchedOrders = [];
         let currentTab = 'available';
+        let fetchTimer; // للتحكم في وقت التحديث الذكي
 
         window.onload = () => {
             if (currentDriver) {
@@ -126,20 +120,43 @@
             renderDriverOrders();
         }
 
+        function forceRefresh() {
+            clearTimeout(fetchTimer);
+            fetchDeliveryOrders();
+        }
+
         async function fetchDeliveryOrders() {
             let branch = document.getElementById("branch-select").value;
             document.getElementById("loading").style.display = "block";
             
             try {
-                // تفتيش جديد في كل مرة يمنع كاش الأيفون باستخدام Date.now()
-                let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`);
+                // إجبار سفاري على عدم الكاش والتوافق مع الـ Redirect
+                let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`, {
+                    method: 'GET',
+                    cache: 'no-store', // منع سفاري من التخزين
+                    mode: 'cors',
+                    redirect: 'follow'
+                });
+                
                 fetchedOrders = await response.json();
                 document.getElementById("loading").style.display = "none";
                 renderDriverOrders();
             } catch(e) { 
                 document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>"; 
+            } finally {
+                // تحديث ذكي: يطلب التحديث اللي بعده "فقط" بعد ما الحالي يخلص
+                clearTimeout(fetchTimer);
+                fetchTimer = setTimeout(fetchDeliveryOrders, 30000);
             }
         }
+
+        // *** السر هنا لسرعة الآيفون ***
+        // لما الطيار يفتح الموبايل من جيبه، حدث فوراً من غير ما تستنى
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                forceRefresh();
+            }
+        });
 
         function renderDriverOrders() {
             let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && o.Driver === currentDriver);
@@ -158,7 +175,6 @@
             
             let html = "";
             displayList.forEach(order => {
-                // --- معالجة الأرقام الذكية ---
                 let rawPhone = String(order.Phone || "").replace(/\s+/g, '');
                 let formattedPhone = rawPhone;
 
@@ -205,14 +221,14 @@
         async function updateStatus(row, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             try {
-                // تحديث الحالة
-                await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`);
-                fetchDeliveryOrders(); 
+                // إجبار سفاري على تنفيذ الأمر وعدم كاش التحديث
+                await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`, {
+                    method: 'GET', cache: 'no-store', mode: 'cors'
+                });
+                forceRefresh(); 
             } catch(e) { alert("فشل التحديث!"); }
         }
 
-        setInterval(fetchDeliveryOrders, 30000); 
-        
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault(); deferredPrompt = e;
