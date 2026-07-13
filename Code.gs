@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>بوابة الطيارين - Manny's</title>
+    <style>
+        body { font-family: Tahoma, Arial, sans-serif; background: #f2f4f7; margin: 0; padding: 15px; padding-bottom: 50px;}
+        
+        /* Login Screen */
+        #login-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white;}
+        #login-screen input { padding: 15px; font-size: 18px; border-radius: 8px; border: none; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px;}
+        #login-screen button { background: #f0a500; color: #222; font-weight: bold; font-size: 18px; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;}
+        
+        /* App UI */
+        .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 15px;}
+        .header h1 { margin: 0; font-size: 20px; }
+        .driver-info { color: white; font-size: 14px; margin-top: 5px; }
+        .filters select { width: 100%; padding: 10px; border-radius: 8px; font-size: 16px; font-weight:bold; border: none;}
+        .refresh-btn { background: #f0a500; color: #222; border: none; padding: 12px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; margin-top: 10px; font-size: 16px;}
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px 5px; font-size: 15px; font-weight: bold; background: #ddd; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; color: #333;}
+        .tab-btn.active { background: #f0a500; color: #222; }
+
+        /* Order Cards */
+        .order-card { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-right: 5px solid #f0a500; }
+        .order-id { background: #222; color: #f0a500; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 14px; }
+        .status-badge { background: #e8f5e9; color: #155724; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px; border: 1px solid #c3e6cb;}
+        .info-row { margin-bottom: 8px; font-size: 15px; line-height: 1.5; }
+        .total-price { font-size: 18px; font-weight: bold; color: #d35400; text-align: center; background: #fff9e6; padding: 12px; border-radius: 8px; margin: 15px 0;}
+        
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
+        .btn { flex: 1; min-width: 30%; padding: 10px; border: none; border-radius: 8px; font-weight: bold; font-size: 13px; text-align: center; text-decoration: none; display: block; color: white; cursor: pointer;}
+        .btn-call { background: #007bff; }
+        .btn-wa { background: #28a745; }
+        .btn-loc { background: #17a2b8; }
+        .btn-road { background: #f0a500; color: #222; flex-basis: 100%; font-size: 16px; padding: 15px;}
+        .btn-done { background: #28a745; flex-basis: 100%; font-size: 16px; padding: 15px;}
+        
+        /* PWA Install Prompt */
+        #pwa-prompt { display: none; background: #28a745; color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2>🛵 أهلاً بيك يا بطل</h2>
+        <p>اكتب اسمك عشان تستلم الأوردرات</p>
+        <input type="text" id="driver-name-input" placeholder="اسم الطيار (مثال: أحمد)">
+        <button onclick="saveDriverName()">دخول للسيستم</button>
+    </div>
+
+    <div id="main-app" style="display: none;">
+        <div id="pwa-prompt">📲 اضغط هنا لتثبيت الأبلكيشن على موبايلك</div>
+
+        <div class="header">
+            <h1>🛵 بوابة الطيارين</h1>
+            <div class="driver-info">الطيار: <strong id="display-name"></strong></div>
+            <div class="filters" style="margin-top: 10px;">
+                <select id="branch-select" onchange="fetchDeliveryOrders()">
+                    <option value="فيصل">فرع فيصل</option>
+                    <option value="شرم (خليج نعمة)">شرم (خليج نعمة)</option>
+                    <option value="شرم (خليج نبق)">شرم (خليج نبق)</option>
+                </select>
+            </div>
+            <button class="refresh-btn" onclick="fetchDeliveryOrders()">🔄 تحديث الأوردرات</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-tab-available" onclick="switchDriverTab('available')">📦 متاح (<span id="count-avail">0</span>)</button>
+            <button class="tab-btn" id="btn-tab-mine" onclick="switchDriverTab('mine')">🛵 أوردراتي (<span id="count-mine">0</span>)</button>
+        </div>
+
+        <div id="loading" style="text-align:center; font-weight:bold;">جاري التحميل... ⏳</div>
+        <div id="orders-container"></div>
+    </div>
+
+    <script>
+        // *** حط اللينك بتاعك هنا ***
+        const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
+        
+        let currentDriver = "";
+        let fetchedOrders = [];
+        let currentTab = 'available';
+
+        window.onload = () => {
+            currentDriver = localStorage.getItem('mannys_driver_name');
+            if (currentDriver) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                document.getElementById('display-name').innerText = currentDriver;
+                fetchDeliveryOrders();
+            }
+        };
+
+        function saveDriverName() {
+            let name = document.getElementById('driver-name-input').value.trim();
+            if (!name) return alert("لازم تكتب اسمك يا بطل!");
+            localStorage.setItem('mannys_driver_name', name);
+            window.location.reload();
+        }
+
+        function switchDriverTab(tab) {
+            currentTab = tab;
+            document.getElementById('btn-tab-available').classList.remove('active');
+            document.getElementById('btn-tab-mine').classList.remove('active');
+            document.getElementById('btn-tab-' + tab).classList.add('active');
+            renderDriverOrders();
+        }
+
+        async function fetchDeliveryOrders() {
+            let branch = document.getElementById("branch-select").value;
+            document.getElementById("loading").style.display = "block";
+            
+            try {
+                // ضفنا t=${Date.now()} لمنع الأيفون من تخزين نسخة قديمة
+                let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`);
+                fetchedOrders = await response.json();
+                document.getElementById("loading").style.display = "none";
+                renderDriverOrders();
+            } catch(e) { 
+                document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>"; 
+            }
+        }
+
+        function renderDriverOrders() {
+            let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && o.Driver === currentDriver);
+            let availableOrders = fetchedOrders.filter(o => o.Status && !o.Status.includes("طريق") && !o.Status.includes("تم التوصيل") && !o.Status.includes("ملغي"));
+
+            document.getElementById('count-avail').innerText = availableOrders.length;
+            document.getElementById('count-mine').innerText = myOrders.length;
+
+            let displayList = currentTab === 'available' ? availableOrders : myOrders;
+
+            if(displayList.length === 0) {
+                let emptyMsg = currentTab === 'available' ? "مفيش أوردرات جاهزة للاستلام دلوقتي ☕" : "معندكش أوردرات حالية على المكنة 🛵";
+                document.getElementById("orders-container").innerHTML = `<h3 style='text-align:center; color:#555; margin-top:40px;'>${emptyMsg}</h3>`;
+                return;
+            }
+            
+            let html = "";
+            displayList.forEach(order => {
+                // --- معالجة الأرقام الذكية (مصري/دولي) ---
+                let rawPhone = String(order.Phone || "").replace(/\s+/g, '');
+                let formattedPhone = rawPhone;
+
+                // لو بيبدأ بـ + نشيلها
+                if (rawPhone.startsWith('+')) { formattedPhone = rawPhone.substring(1); } 
+                // لو بيبدأ بـ 00 نشيلهم
+                else if (rawPhone.startsWith('00')) { formattedPhone = rawPhone.substring(2); } 
+                // لو مصري بيبدأ بـ 0 (زي 010) نشيل الصفر ونحط 20
+                else if (rawPhone.startsWith('0') && rawPhone.length === 11) { formattedPhone = '20' + rawPhone.substring(1); }
+                // لو مصري بس من غير صفر (زي 10) نحط 20
+                else if (rawPhone.length === 10 && rawPhone.startsWith('1')) { formattedPhone = '20' + rawPhone; }
+
+                let callLink = `tel:${formattedPhone}`;
+                let waMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، أنا في الطريق لحضرتك.");
+                let waLink = `https://wa.me/${formattedPhone}?text=${waMsg}`;
+                let locMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، ممكن حضرتك تبعتلي اللوكيشن (Location) هنا عشان أوصلك أسرع؟");
+                let locLink = `https://wa.me/${formattedPhone}?text=${locMsg}`;
+                
+                let isMyOrder = currentTab === 'mine';
+
+                html += `
+                <div class="order-card">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span class="order-id">${order.OrderID || 'بدون كود'}</span>
+                        <span class="status-badge">${order.Status}</span>
+                    </div>
+                    <div class="info-row"><strong>العميل:</strong> ${order.Name}</div>
+                    <div class="info-row"><strong>العنوان:</strong> ${order.Address}</div>
+                    ${order.Notes ? `<div class="info-row" style="color:#dc3545;"><strong>ملاحظة:</strong> ${order.Notes}</div>` : ''}
+                    <div class="total-price">المطلوب تحصيله: ${order.Total} LE</div>
+                    
+                    <div class="action-buttons">
+                        <a href="${callLink}" class="btn btn-call">📞 اتصال</a>
+                        <a href="${waLink}" target="_blank" class="btn btn-wa">💬 في الطريق</a>
+                        <a href="${locLink}" target="_blank" class="btn btn-loc">📍 اللوكيشن</a>
+                        
+                        ${!isMyOrder ? 
+                        `<button class="btn btn-road" onclick="updateStatus(${order.row}, 'في الطريق 🛵')">🛵 استلام الأوردر</button>` 
+                        : 
+                        `<button class="btn btn-done" onclick="updateStatus(${order.row}, 'تم التوصيل ✅')">✅ تم التوصيل واستلام الفلوس</button>`
+                        }
+                    </div>
+                </div>`;
+            });
+            document.getElementById("orders-container").innerHTML = html;
+        }
+
+        async function updateStatus(row, newStatus) {
+            if(!confirm("تأكيد العملية؟")) return;
+            try {
+                await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`);
+                fetchDeliveryOrders(); 
+            } catch(e) { alert("فشل التحديث!"); }
+        }
+
+        setInterval(fetchDeliveryOrders, 30000); 
+        
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+            document.getElementById('pwa-prompt').style.display = 'block';
+        });
+        document.getElementById('pwa-prompt').addEventListener('click', async () => {
+            if (deferredPrompt) { 
+                deferredPrompt.prompt(); 
+                deferredPrompt = null; 
+                document.getElementById('pwa-prompt').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
