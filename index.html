@@ -42,6 +42,7 @@
         .btn-road { background: #f0a500; color: #222; flex-basis: 100%; font-size: 16px; padding: 15px;}
         .btn-done { background: #28a745; flex-basis: 100%; font-size: 16px; padding: 15px;}
         
+        /* PWA Install Prompt */
         #pwa-prompt { display: none; background: #28a745; color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
@@ -80,6 +81,7 @@
     </div>
 
     <script>
+        // *** حط اللينك بتاعك هنا ***
         const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
         
         let currentDriver = "";
@@ -116,7 +118,8 @@
             document.getElementById("loading").style.display = "block";
             
             try {
-                let response = await fetch(API_URL + "?action=getDeliveryOrders&branch=" + encodeURIComponent(branch));
+                // ضفنا t=${Date.now()} لمنع الأيفون من تخزين نسخة قديمة
+                let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`);
                 fetchedOrders = await response.json();
                 document.getElementById("loading").style.display = "none";
                 renderDriverOrders();
@@ -126,8 +129,8 @@
         }
 
         function renderDriverOrders() {
-            let myOrders = fetchedOrders.filter(o => o.Status.includes("طريق") && o.Driver === currentDriver);
-            let availableOrders = fetchedOrders.filter(o => !o.Status.includes("طريق") && !o.Status.includes("تم التوصيل") && !o.Status.includes("ملغي"));
+            let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && o.Driver === currentDriver);
+            let availableOrders = fetchedOrders.filter(o => o.Status && !o.Status.includes("طريق") && !o.Status.includes("تم التوصيل") && !o.Status.includes("ملغي"));
 
             document.getElementById('count-avail').innerText = availableOrders.length;
             document.getElementById('count-mine').innerText = myOrders.length;
@@ -193,7 +196,7 @@
         async function updateStatus(row, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             try {
-                await fetch(API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent(newStatus) + "&driver=" + encodeURIComponent(currentDriver));
+                await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`);
                 fetchDeliveryOrders(); 
             } catch(e) { alert("فشل التحديث!"); }
         }
