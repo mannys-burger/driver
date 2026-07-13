@@ -80,7 +80,7 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
+        const API_URL = "حط_اللينك_بتاعك_هنا"; 
         
         let currentDriver = "";
         let fetchedOrders = [];
@@ -146,9 +146,13 @@
                 let rawPhone = String(order.Phone || "").replace(/\s+/g, '');
                 let formattedPhone = rawPhone;
 
+                // لو بيبدأ بـ + نشيلها
                 if (rawPhone.startsWith('+')) { formattedPhone = rawPhone.substring(1); } 
+                // لو بيبدأ بـ 00 نشيلهم
                 else if (rawPhone.startsWith('00')) { formattedPhone = rawPhone.substring(2); } 
+                // لو مصري بيبدأ بـ 0 (زي 010) نشيل الصفر ونحط 20
                 else if (rawPhone.startsWith('0') && rawPhone.length === 11) { formattedPhone = '20' + rawPhone.substring(1); }
+                // لو مصري بس من غير صفر (زي 10) نحط 20
                 else if (rawPhone.length === 10 && rawPhone.startsWith('1')) { formattedPhone = '20' + rawPhone; }
 
                 let callLink = `tel:${formattedPhone}`;
