@@ -2,9 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -46,15 +43,6 @@
 </head>
 <body>
 
-    <script>
-        // إزالة أي Service Worker قديم
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
-    </script>
-
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
         <p>اكتب اسمك عشان تستلم الأوردرات</p>
@@ -69,13 +57,13 @@
             <h1>🛵 بوابة الطيارين</h1>
             <div class="driver-info">الطيار: <strong id="display-name"></strong></div>
             <div class="filters" style="margin-top: 10px;">
-                <select id="branch-select" onchange="forceRefresh()">
+                <select id="branch-select" onchange="fetchDeliveryOrders()">
                     <option value="فيصل">فرع فيصل</option>
                     <option value="شرم (خليج نعمة)">شرم (خليج نعمة)</option>
                     <option value="شرم (خليج نبق)">شرم (خليج نبق)</option>
                 </select>
             </div>
-            <button class="refresh-btn" onclick="forceRefresh()">🔄 تحديث الأوردرات</button>
+            <button class="refresh-btn" onclick="fetchDeliveryOrders()">🔄 تحديث الأوردرات</button>
         </div>
 
         <div class="tabs">
@@ -89,15 +77,16 @@
 
     <script>
         // *** حط اللينك بتاعك هنا ***
-        const API_URL = "https://script.google.com/macros/s/AKfycbwk_KRq58ZNXaUFeXiGPeOzTiQho1it7QbsRsRhFqpcmpRHj8Hatp75ZrFF-fZdeL5Rgw/exec"; 
+        const API_URL = "https://script.google.com/macros/s/AKfycbzH-nVxNBJ_kZ6124E0kS2Mw2La8DG0TAcFZNuprnlT2nvjmn9GPMatSIE7rwHGmzxSOw/exec"; 
         
-        let currentDriver = localStorage.getItem('mannys_driver_name');
+        let currentDriver = "";
         let fetchedOrders = [];
         let currentTab = 'available';
-        let fetchTimer; // للتحكم في وقت التحديث الذكي
 
         window.onload = () => {
+            currentDriver = localStorage.getItem('mannys_driver_name');
             if (currentDriver) {
+                // لو الاسم موجود، هندخل فوراً بدون ما نعمل ريفريش للصفحة
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'block';
                 document.getElementById('display-name').innerText = currentDriver;
@@ -108,8 +97,16 @@
         function saveDriverName() {
             let name = document.getElementById('driver-name-input').value.trim();
             if (!name) return alert("لازم تكتب اسمك يا بطل!");
+            
+            // حفظ الاسم والانتقال بدون window.location.reload() عشان الآيفون ميمسحش الجلسة
             localStorage.setItem('mannys_driver_name', name);
-            window.location.reload();
+            currentDriver = name;
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('display-name').innerText = currentDriver;
+            
+            fetchDeliveryOrders();
         }
 
         function switchDriverTab(tab) {
@@ -120,47 +117,25 @@
             renderDriverOrders();
         }
 
-        function forceRefresh() {
-            clearTimeout(fetchTimer);
-            fetchDeliveryOrders();
-        }
-
         async function fetchDeliveryOrders() {
             let branch = document.getElementById("branch-select").value;
             document.getElementById("loading").style.display = "block";
             
             try {
-                // إجبار سفاري على عدم الكاش والتوافق مع الـ Redirect
-                let response = await fetch(`${API_URL}?action=getDeliveryOrders&branch=${encodeURIComponent(branch)}&t=${Date.now()}`, {
-                    method: 'GET',
-                    cache: 'no-store', // منع سفاري من التخزين
-                    mode: 'cors',
-                    redirect: 'follow'
-                });
-                
+                // طلب بسيط وسريع جداً، مع وقت لمنع الكاش الخفيف بدون تعقيد
+                let response = await fetch(API_URL + "?action=getDeliveryOrders&branch=" + encodeURIComponent(branch) + "&t=" + new Date().getTime());
                 fetchedOrders = await response.json();
                 document.getElementById("loading").style.display = "none";
                 renderDriverOrders();
             } catch(e) { 
                 document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>"; 
-            } finally {
-                // تحديث ذكي: يطلب التحديث اللي بعده "فقط" بعد ما الحالي يخلص
-                clearTimeout(fetchTimer);
-                fetchTimer = setTimeout(fetchDeliveryOrders, 30000);
             }
         }
 
-        // *** السر هنا لسرعة الآيفون ***
-        // لما الطيار يفتح الموبايل من جيبه، حدث فوراً من غير ما تستنى
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                forceRefresh();
-            }
-        });
-
         function renderDriverOrders() {
-            let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && o.Driver === currentDriver);
-            let availableOrders = fetchedOrders.filter(o => o.Status && !o.Status.includes("طريق") && !o.Status.includes("تم التوصيل") && !o.Status.includes("ملغي"));
+            // مطابقة اسم الطيار بدقة (استخدمنا trim عشان لو فيه مسافة زيادة ميبوظش الفلتر)
+            let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && String(o.Driver).trim() === String(currentDriver).trim());
+            let availableOrders = fetchedOrders.filter(o => o.Status && !o.Status.includes("طريق") && !o.Status.includes("توصيل") && !o.Status.includes("ملغي"));
 
             document.getElementById('count-avail').innerText = availableOrders.length;
             document.getElementById('count-mine').innerText = myOrders.length;
@@ -221,14 +196,19 @@
         async function updateStatus(row, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             try {
-                // إجبار سفاري على تنفيذ الأمر وعدم كاش التحديث
-                await fetch(`${API_URL}?action=updateOrder&row=${row}&status=${encodeURIComponent(newStatus)}&driver=${encodeURIComponent(currentDriver)}&t=${Date.now()}`, {
-                    method: 'GET', cache: 'no-store', mode: 'cors'
-                });
-                forceRefresh(); 
-            } catch(e) { alert("فشل التحديث!"); }
+                document.getElementById("loading").style.display = "block";
+                // نرسل الطلب ونحدث البيانات
+                await fetch(API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent(newStatus) + "&driver=" + encodeURIComponent(currentDriver) + "&t=" + new Date().getTime());
+                fetchDeliveryOrders(); 
+            } catch(e) { 
+                alert("فشل التحديث!"); 
+                document.getElementById("loading").style.display = "none";
+            }
         }
 
+        // تحديث كل 30 ثانية بهدوء بدون مشاكل لسفاري
+        setInterval(fetchDeliveryOrders, 30000); 
+        
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault(); deferredPrompt = e;
