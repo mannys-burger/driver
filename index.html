@@ -67,12 +67,12 @@
             <button class="tab-btn" id="btn-tab-mine" onclick="switchDriverTab('mine')">🛵 أوردراتي (<span id="count-mine">0</span>)</button>
         </div>
 
-        <div id="loading" style="text-align:center; font-weight:bold;">جاري التحميل... ⏳</div>
+        <div id="loading" style="text-align:center; font-weight:bold; display:none;">جاري التحميل... ⏳</div>
         <div id="orders-container"></div>
     </div>
 
     <script>
-        // *** حط اللينك بتاعك هنا ***
+        // اللينك بتاعك محفوظ زي ما هو
         const API_URL = "https://script.google.com/macros/s/AKfycbxIQlYJI6-2_-AL6WnxB7Ni3CVZ-0nVuObufRce_XstI2m7QBKgcnO9IKFr6ZBnPNlwxg/exec"; 
         
         let currentDriver = "";
@@ -86,7 +86,7 @@
                 document.getElementById('main-app').style.display = 'block';
                 document.getElementById('display-name').innerText = currentDriver;
                 
-                // تأخير نص ثانية بس عشان الأيفون يلحق يلقط شبكة وميعلقش 60 ثانية
+                // تأخير بسيط عشان الأيفون يلقط شبكة
                 setTimeout(fetchDeliveryOrders, 500);
             }
         };
@@ -113,34 +113,52 @@
             renderDriverOrders();
         }
 
+        // --- الدالة السحرية الجديدة (نظام الذاكرة المؤقتة الذكي) ---
         function fetchDeliveryOrders() {
             let branch = document.getElementById("branch-select").value;
-            document.getElementById("loading").style.display = "block";
             
+            // 1. استرجاع الأوردرات القديمة من الذاكرة لعرضها فوراً للطيار
+            let cachedData = localStorage.getItem('mannys_cache_' + branch);
+            if (cachedData) {
+                try {
+                    fetchedOrders = JSON.parse(cachedData);
+                    renderDriverOrders(); // عرض فوري بدون أي تحميل
+                } catch(e) {}
+            } else {
+                // لو دي أول مرة في حياته يفتح الأبلكيشن ومفيش حاجة متخزنة، نعرضله "جاري التحميل"
+                document.getElementById("loading").style.display = "block";
+            }
+            
+            // 2. سحب البيانات الجديدة من جوجل في الخلفية بصمت
             let url = API_URL + "?action=getDeliveryOrders&branch=" + encodeURIComponent(branch) + "&t=" + new Date().getTime();
-            
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
+            
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     document.getElementById("loading").style.display = "none";
                     if (xhr.status === 200) {
                         try {
-                            fetchedOrders = JSON.parse(xhr.responseText);
+                            let freshData = xhr.responseText;
+                            
+                            // 3. تحديث البيانات وحفظها في الذاكرة للمرة الجاية
+                            localStorage.setItem('mannys_cache_' + branch, freshData);
+                            fetchedOrders = JSON.parse(freshData);
                             renderDriverOrders();
                         } catch(e) {
-                            document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في قراءة البيانات!</span>";
+                            if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في قراءة البيانات!</span>";
                         }
                     } else {
-                        document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>";
+                        if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>";
                     }
                 }
             };
             xhr.onerror = function() {
-                document.getElementById("loading").innerHTML = "<span style='color:red;'>فشل الاتصال بالسيرفر!</span>";
+                if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>فشل الاتصال بالسيرفر!</span>";
             };
             xhr.send();
         }
+        // -------------------------------------------------------------
 
         function renderDriverOrders() {
             let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && String(o.Driver).trim() === String(currentDriver).trim());
@@ -205,6 +223,7 @@
         function updateStatus(row, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             
+            // عند تحديث الحالة، بنظهر التحميل عشان الطيار يعرف إن الأوردر بيتبعت للسيرفر
             document.getElementById("loading").style.display = "block";
             let url = API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent(newStatus) + "&driver=" + encodeURIComponent(currentDriver) + "&t=" + new Date().getTime();
             
