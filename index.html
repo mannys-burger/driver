@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="logo.png">
     
     <title>بوابة الطيارين - Manny's</title>
 
@@ -14,10 +16,17 @@
 
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background: #f2f4f7; margin: 0; padding: 15px; padding-bottom: 50px;}
+        
+        /* 🔥 بانر التثبيت للكمبيوتر والموبايل 🔥 */
+        #desktop-install-banner { display: none; background: linear-gradient(135deg, #17a2b8, #117a8b); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        #desktop-install-banner p { margin: 0; font-size: 16px; font-weight: bold; }
+        #desktop-install-banner button { background: #fff; color: #17a2b8; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #desktop-install-banner button:active { transform: scale(0.95); }
+
         #login-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white;}
         #login-screen input { padding: 15px; font-size: 18px; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; width: 80%; max-width: 300px; box-sizing: border-box;}
         #login-screen button { background: #f0a500; color: #222; font-weight: bold; font-size: 18px; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 80%; max-width: 300px;}
-        .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 15px;}
+        .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 15px; position: relative;}
         .header h1 { margin: 0; font-size: 20px; }
         .driver-info { color: white; font-size: 14px; margin-top: 5px; }
         .filters select { width: 100%; padding: 10px; border-radius: 8px; font-size: 16px; font-weight:bold; border: none;}
@@ -41,7 +50,13 @@
 </head>
 <body>
 
-    <!-- 🔥 شاشة تسجيل دخول الطيار (محدثة بالرقم) 🔥 -->
+    <!-- 🔥 بانر التثبيت للكمبيوتر والموبايل للطيار 🔥 -->
+    <div id="desktop-install-banner">
+        <p>🛵 أضف أبلكيشن الطيارين لجهازك (كمبيوتر أو موبايل)!</p>
+        <button onclick="installApp()">📲 تثبيت كبرنامج</button>
+    </div>
+
+    <!-- شاشة تسجيل دخول الطيار (محدثة بالرقم) -->
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
         <p>سجل بياناتك عشان تستلم الأوردرات</p>
@@ -76,7 +91,7 @@
     </div>
 
     <script>
-        // 🔥 تهيئة اتصال Firebase 🔥
+        // تهيئة اتصال Firebase 
         const firebaseConfig = {
             apiKey: "AIzaSyAzADv7ikkPyCwZu_oWgMdO6j-i9h7Z2y8",
             authDomain: "mannysburgerpos.firebaseapp.com",
@@ -103,7 +118,6 @@
             }
         };
 
-        // 🔥 دالة تسجيل الدخول (حفظ الاسم والرقم) 🔥
         function saveDriverName() {
             let name = document.getElementById('driver-name-input').value.trim();
             let phone = document.getElementById('driver-phone-input').value.trim();
@@ -132,7 +146,6 @@
             renderDriverOrders();
         }
 
-        // 🔥 الاستماع للأوردرات لحظياً من الفايربيز 🔥
         function listenToOrders() {
             let branch = document.getElementById("branch-select").value;
             document.getElementById("loading").style.display = "block";
@@ -170,12 +183,9 @@
                 });
         }
 
-        // 🔥 عرض الأوردرات في الشاشة 🔥
         function renderDriverOrders() {
-            // أوردراتي: اللي حالتها "في الطريق" واسم الطيار مطابق لاسمي بالكامل (بالرقم)
             let myOrders = fetchedOrders.filter(o => o.Status.includes("طريق") && String(o.Driver).trim() === String(currentDriver).trim());
             
-            // المتاح: اللي مش في الطريق ومش متوصل ومش ملغي ومش مقفول
             let availableOrders = fetchedOrders.filter(o => 
                 !o.Status.includes("طريق") && 
                 !o.Status.includes("توصيل") && 
@@ -248,7 +258,6 @@
             document.getElementById("orders-container").innerHTML = html;
         }
 
-        // 🔥 تحديث حالة الأوردر واسم الطيار في الفايربيز 🔥
         async function updateStatus(docId, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             
@@ -258,7 +267,6 @@
                 let updateData = { status: newStatus };
                 
                 if (newStatus.includes("في الطريق")) {
-                    // السيستم هيبعت الاسم والرقم المدموجين للإدمن
                     updateData.driver = currentDriver;
                     updateData.outTime = new Date().getTime(); 
                 } else if (newStatus.includes("تم التوصيل")) {
@@ -270,6 +278,29 @@
                 alert("❌ حصلت مشكلة في التحديث، اتأكد من النت!");
                 console.error(e);
             }
+        }
+
+        // 🔥 أوامر تثبيت التطبيق للكمبيوتر والموبايل (PWA) للطيار 🔥
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); 
+            deferredPrompt = e; 
+            document.getElementById('desktop-install-banner').style.display = 'flex';
+        });
+
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('desktop-install-banner').style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
         }
     </script>
 </body>
