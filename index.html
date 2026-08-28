@@ -6,16 +6,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- سطرين التسخين المسبق لسيرفرات جوجل عشان أول فتحة تبقى صاروخ -->
-    <link rel="preconnect" href="https://script.google.com">
-    <link rel="preconnect" href="https://script.googleusercontent.com">
-    
     <title>بوابة الطيارين - Manny's</title>
+
+    <!-- 🔥 مكاتب الفايربيز 🔥 -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background: #f2f4f7; margin: 0; padding: 15px; padding-bottom: 50px;}
         #login-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white;}
-        #login-screen input { padding: 15px; font-size: 18px; border-radius: 8px; border: none; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px;}
-        #login-screen button { background: #f0a500; color: #222; font-weight: bold; font-size: 18px; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;}
+        #login-screen input { padding: 15px; font-size: 18px; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; width: 80%; max-width: 300px; box-sizing: border-box;}
+        #login-screen button { background: #f0a500; color: #222; font-weight: bold; font-size: 18px; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 80%; max-width: 300px;}
         .header { background: #222; color: #f0a500; text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 15px;}
         .header h1 { margin: 0; font-size: 20px; }
         .driver-info { color: white; font-size: 14px; margin-top: 5px; }
@@ -36,30 +37,33 @@
         .btn-loc { background: #17a2b8; }
         .btn-road { background: #f0a500; color: #222; flex-basis: 100%; font-size: 16px; padding: 15px;}
         .btn-done { background: #28a745; flex-basis: 100%; font-size: 16px; padding: 15px;}
-        #pwa-prompt { display: none; background: #28a745; color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
 <body>
 
+    <!-- 🔥 شاشة تسجيل دخول الطيار (محدثة بالرقم) 🔥 -->
     <div id="login-screen">
         <h2>🛵 أهلاً بيك يا بطل</h2>
-        <p>اكتب اسمك عشان تستلم الأوردرات</p>
+        <p>سجل بياناتك عشان تستلم الأوردرات</p>
         <input type="text" id="driver-name-input" placeholder="اسم الطيار (مثال: أحمد)">
+        <input type="tel" id="driver-phone-input" placeholder="رقم الموبايل (مثال: 010...)">
         <button onclick="saveDriverName()">دخول للسيستم</button>
     </div>
 
+    <!-- التطبيق الأساسي -->
     <div id="main-app" style="display: none;">
         <div class="header">
             <h1>🛵 بوابة الطيارين</h1>
             <div class="driver-info">الطيار: <strong id="display-name"></strong></div>
             <div class="filters" style="margin-top: 10px;">
-                <select id="branch-select" onchange="fetchDeliveryOrders()">
+                <select id="branch-select" onchange="listenToOrders()">
                     <option value="فيصل">فرع فيصل</option>
                     <option value="شرم (خليج نعمة)">شرم (خليج نعمة)</option>
                     <option value="شرم (خليج نبق)">شرم (خليج نبق)</option>
                 </select>
             </div>
-            <button class="refresh-btn" onclick="fetchDeliveryOrders()">🔄 تحديث الأوردرات</button>
+            <!-- زرار التحديث أصبح ديكور لأن التحديث بقى لحظي، بس سيبناه عشان الطيار يطمن -->
+            <button class="refresh-btn" onclick="listenToOrders()">🔄 تحديث الأوردرات (Real-time ⚡)</button>
         </div>
 
         <div class="tabs">
@@ -67,17 +71,27 @@
             <button class="tab-btn" id="btn-tab-mine" onclick="switchDriverTab('mine')">🛵 أوردراتي (<span id="count-mine">0</span>)</button>
         </div>
 
-        <div id="loading" style="text-align:center; font-weight:bold; display:none;">جاري التحميل... ⏳</div>
+        <div id="loading" style="text-align:center; font-weight:bold; display:none; color: #007bff; margin-top: 20px;">جاري الاتصال بالسيرفر... ⏳</div>
         <div id="orders-container"></div>
     </div>
 
     <script>
-        // اللينك بتاعك محفوظ زي ما هو
-        const API_URL = "https://script.google.com/macros/s/AKfycbxIQlYJI6-2_-AL6WnxB7Ni3CVZ-0nVuObufRce_XstI2m7QBKgcnO9IKFr6ZBnPNlwxg/exec"; 
-        
+        // 🔥 تهيئة اتصال Firebase 🔥
+        const firebaseConfig = {
+            apiKey: "AIzaSyAzADv7ikkPyCwZu_oWgMdO6j-i9h7Z2y8",
+            authDomain: "mannysburgerpos.firebaseapp.com",
+            projectId: "mannysburgerpos",
+            storageBucket: "mannysburgerpos.firebasestorage.app",
+            messagingSenderId: "42324740674",
+            appId: "1:42324740674:web:9d3c27a2bcb3c94a943bdb"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         let currentDriver = "";
         let fetchedOrders = [];
         let currentTab = 'available';
+        let unsubscribe = null; 
 
         window.onload = () => {
             currentDriver = localStorage.getItem('mannys_driver_name');
@@ -85,84 +99,89 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'block';
                 document.getElementById('display-name').innerText = currentDriver;
-                
-                // تأخير بسيط عشان الأيفون يلقط شبكة
-                setTimeout(fetchDeliveryOrders, 500);
+                listenToOrders();
             }
         };
 
+        // 🔥 دالة تسجيل الدخول (حفظ الاسم والرقم) 🔥
         function saveDriverName() {
             let name = document.getElementById('driver-name-input').value.trim();
-            if (!name) return alert("لازم تكتب اسمك يا بطل!");
+            let phone = document.getElementById('driver-phone-input').value.trim();
             
-            localStorage.setItem('mannys_driver_name', name);
-            currentDriver = name;
+            if (!name || !phone) {
+                return alert("لازم تكتب اسمك ورقم موبايلك يا بطل!");
+            }
+            
+            // دمج الاسم والرقم في متغير واحد
+            let fullDriverData = `${name} (${phone})`;
+            
+            localStorage.setItem('mannys_driver_name', fullDriverData);
+            currentDriver = fullDriverData;
             
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('main-app').style.display = 'block';
             document.getElementById('display-name').innerText = currentDriver;
             
-            fetchDeliveryOrders();
+            listenToOrders();
         }
 
         function switchDriverTab(tab) {
             currentTab = tab;
-            document.getElementById('btn-tab-available').classList.remove('active');
-            document.getElementById('btn-tab-mine').classList.remove('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('btn-tab-' + tab).classList.add('active');
             renderDriverOrders();
         }
 
-        // --- الدالة السحرية الجديدة (نظام الذاكرة المؤقتة الذكي) ---
-        function fetchDeliveryOrders() {
+        // 🔥 الاستماع للأوردرات لحظياً من الفايربيز 🔥
+        function listenToOrders() {
             let branch = document.getElementById("branch-select").value;
-            
-            // 1. استرجاع الأوردرات القديمة من الذاكرة لعرضها فوراً للطيار
-            let cachedData = localStorage.getItem('mannys_cache_' + branch);
-            if (cachedData) {
-                try {
-                    fetchedOrders = JSON.parse(cachedData);
-                    renderDriverOrders(); // عرض فوري بدون أي تحميل
-                } catch(e) {}
-            } else {
-                // لو دي أول مرة في حياته يفتح الأبلكيشن ومفيش حاجة متخزنة، نعرضله "جاري التحميل"
-                document.getElementById("loading").style.display = "block";
-            }
-            
-            // 2. سحب البيانات الجديدة من جوجل في الخلفية بصمت
-            let url = API_URL + "?action=getDeliveryOrders&branch=" + encodeURIComponent(branch) + "&t=" + new Date().getTime();
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    document.getElementById("loading").style.display = "none";
-                    if (xhr.status === 200) {
-                        try {
-                            let freshData = xhr.responseText;
-                            
-                            // 3. تحديث البيانات وحفظها في الذاكرة للمرة الجاية
-                            localStorage.setItem('mannys_cache_' + branch, freshData);
-                            fetchedOrders = JSON.parse(freshData);
-                            renderDriverOrders();
-                        } catch(e) {
-                            if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في قراءة البيانات!</span>";
-                        }
-                    } else {
-                        if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال!</span>";
-                    }
-                }
-            };
-            xhr.onerror = function() {
-                if(!cachedData) document.getElementById("loading").innerHTML = "<span style='color:red;'>فشل الاتصال بالسيرفر!</span>";
-            };
-            xhr.send();
-        }
-        // -------------------------------------------------------------
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("orders-container").innerHTML = "";
 
+            if (unsubscribe) unsubscribe();
+
+            unsubscribe = db.collection("Orders")
+                .where("isArchived", "==", false)
+                .where("branch", "==", branch)
+                .onSnapshot(snapshot => {
+                    document.getElementById("loading").style.display = "none";
+                    fetchedOrders = [];
+                    
+                    snapshot.forEach(doc => {
+                        let data = doc.data();
+                        fetchedOrders.push({
+                            row: doc.id,
+                            OrderID: data.orderId || "بدون كود",
+                            Name: data.name || "",
+                            Phone: data.phone || "",
+                            Address: data.address || "",
+                            LocationLink: data.locationLink || "", 
+                            Notes: data.notes || "",
+                            Total: data.total || 0,
+                            Status: data.status || "",
+                            Driver: data.driver || ""
+                        });
+                    });
+                    
+                    renderDriverOrders();
+                }, error => {
+                    console.error("Firebase Error:", error);
+                    document.getElementById("loading").innerHTML = "<span style='color:red;'>خطأ في الاتصال بالسيرفر!</span>";
+                });
+        }
+
+        // 🔥 عرض الأوردرات في الشاشة 🔥
         function renderDriverOrders() {
-            let myOrders = fetchedOrders.filter(o => o.Status && o.Status.includes("طريق") && String(o.Driver).trim() === String(currentDriver).trim());
-            let availableOrders = fetchedOrders.filter(o => o.Status && !o.Status.includes("طريق") && !o.Status.includes("توصيل") && !o.Status.includes("ملغي"));
+            // أوردراتي: اللي حالتها "في الطريق" واسم الطيار مطابق لاسمي بالكامل (بالرقم)
+            let myOrders = fetchedOrders.filter(o => o.Status.includes("طريق") && String(o.Driver).trim() === String(currentDriver).trim());
+            
+            // المتاح: اللي مش في الطريق ومش متوصل ومش ملغي ومش مقفول
+            let availableOrders = fetchedOrders.filter(o => 
+                !o.Status.includes("طريق") && 
+                !o.Status.includes("توصيل") && 
+                !o.Status.includes("ملغي") && 
+                !o.Status.includes("مقفول")
+            );
 
             document.getElementById('count-avail').innerText = availableOrders.length;
             document.getElementById('count-mine').innerText = myOrders.length;
@@ -186,33 +205,42 @@
                 else if (rawPhone.length === 10 && rawPhone.startsWith('1')) { formattedPhone = '20' + rawPhone; }
 
                 let callLink = `tel:${formattedPhone}`;
-                let waMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، أنا في الطريق لحضرتك.");
+                let waMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، أنا في الطريق لحضرتك 🛵.");
                 let waLink = `https://wa.me/${formattedPhone}?text=${waMsg}`;
-                let locMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، ممكن حضرتك تبعتلي اللوكيشن (Location) هنا عشان أوصلك أسرع؟");
-                let locLink = `https://wa.me/${formattedPhone}?text=${locMsg}`;
+                
+                let locLink = "";
+                let locBtnText = "";
+                if (order.LocationLink && order.LocationLink.trim() !== "") {
+                    locLink = order.LocationLink;
+                    locBtnText = "📍 فتح الخريطة";
+                } else {
+                    let locMsg = encodeURIComponent("يا فندم أنا طيار مانيز برجر، ممكن حضرتك تبعتلي اللوكيشن (Location) هنا عشان أوصلك أسرع؟ 📍");
+                    locLink = `https://wa.me/${formattedPhone}?text=${locMsg}`;
+                    locBtnText = "📍 طلب اللوكيشن";
+                }
                 
                 let isMyOrder = currentTab === 'mine';
 
                 html += `
                 <div class="order-card">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span class="order-id">${order.OrderID || 'بدون كود'}</span>
+                        <span class="order-id">${order.OrderID}</span>
                         <span class="status-badge">${order.Status}</span>
                     </div>
                     <div class="info-row"><strong>العميل:</strong> ${order.Name}</div>
                     <div class="info-row"><strong>العنوان:</strong> ${order.Address}</div>
-                    ${order.Notes ? `<div class="info-row" style="color:#dc3545;"><strong>ملاحظة:</strong> ${order.Notes}</div>` : ''}
+                    ${order.Notes ? `<div class="info-row" style="color:#dc3545; font-weight:bold;">📝 ملاحظة: ${order.Notes}</div>` : ''}
                     <div class="total-price">المطلوب تحصيله: ${order.Total} LE</div>
                     
                     <div class="action-buttons">
                         <a href="${callLink}" class="btn btn-call">📞 اتصال</a>
                         <a href="${waLink}" target="_blank" class="btn btn-wa">💬 في الطريق</a>
-                        <a href="${locLink}" target="_blank" class="btn btn-loc">📍 اللوكيشن</a>
+                        <a href="${locLink}" target="_blank" class="btn btn-loc">${locBtnText}</a>
                         
                         ${!isMyOrder ? 
-                        `<button class="btn btn-road" onclick="updateStatus(${order.row}, 'في الطريق 🛵')">🛵 استلام الأوردر</button>` 
+                        `<button class="btn btn-road" onclick="updateStatus('${order.row}', 'في الطريق 🛵')">🛵 استلام الأوردر</button>` 
                         : 
-                        `<button class="btn btn-done" onclick="updateStatus(${order.row}, 'تم التوصيل ✅')">✅ تم التوصيل واستلام الفلوس</button>`
+                        `<button class="btn btn-done" onclick="updateStatus('${order.row}', 'تم التوصيل ✅')">✅ تم التوصيل واستلام الفلوس</button>`
                         }
                     </div>
                 </div>`;
@@ -220,24 +248,29 @@
             document.getElementById("orders-container").innerHTML = html;
         }
 
-        function updateStatus(row, newStatus) {
+        // 🔥 تحديث حالة الأوردر واسم الطيار في الفايربيز 🔥
+        async function updateStatus(docId, newStatus) {
             if(!confirm("تأكيد العملية؟")) return;
             
-            // عند تحديث الحالة، بنظهر التحميل عشان الطيار يعرف إن الأوردر بيتبعت للسيرفر
             document.getElementById("loading").style.display = "block";
-            let url = API_URL + "?action=updateOrder&row=" + row + "&status=" + encodeURIComponent(newStatus) + "&driver=" + encodeURIComponent(currentDriver) + "&t=" + new Date().getTime();
             
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    fetchDeliveryOrders(); 
+            try {
+                let updateData = { status: newStatus };
+                
+                if (newStatus.includes("في الطريق")) {
+                    // السيستم هيبعت الاسم والرقم المدموجين للإدمن
+                    updateData.driver = currentDriver;
+                    updateData.outTime = new Date().getTime(); 
+                } else if (newStatus.includes("تم التوصيل")) {
+                    updateData.deliveredTime = new Date().getTime(); 
                 }
-            };
-            xhr.send();
+                
+                await db.collection("Orders").doc(docId).update(updateData);
+            } catch(e) {
+                alert("❌ حصلت مشكلة في التحديث، اتأكد من النت!");
+                console.error(e);
+            }
         }
-
-        setInterval(fetchDeliveryOrders, 30000); 
     </script>
 </body>
 </html>
